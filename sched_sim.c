@@ -11,10 +11,10 @@ typedef struct {
 
 void schedRR(FakeOS* os, FakeCPU* cpu){
   //deve prendere i processi in os->ready e distribuirli in base al burst minore alle varie cpu
-  // per organizzare la lista di ready si prende per ognuno dei processi presenti il quanto
+  // per organizzare la lista di ready si prende, per ognuno dei processi presenti, il proprio quanto
   //e li ordina per quantum crescente
 
-  //prima di assegnare un evento del quanto ad un cpu (ed eliminarlo dalla coda degli eventi del processo)
+  //prima di assegnare un processo ad un cpu 
   //aggiorna il quanto di quel processo con la formula 1/2(tempoeff +1/2 quantum vecchio)
 
   //SchedRRArgs* args=(SchedRRArgs*)&cpu->quantum;
@@ -48,22 +48,36 @@ void schedRR(FakeOS* os, FakeCPU* cpu){
         }
         node = node->next;    // move to the next node
     }
-    //SBAGLIATO, LA FUNZIONE DEVE LAVORARE SOLO SULLA PRIMA CPU
-      if(cpu->running==NULL){ //alloco un'istanza di ProcessEvent
-          cpu->running=(ProcessEvent*) malloc(sizeof(ProcessEvent));
+      if(cpu->running==NULL){ //alloco un'istanza di FakePCB
+          cpu->running=(FakePCB*) malloc(sizeof(FakePCB));
           FakePCB* processo=(FakePCB*) os->ready.first;
           ProcessEvent* e=(ProcessEvent*) processo->events.first;
-          if(e->type==CPU){
-          cpu->running=e; //tiriamo fuori l'evento
-          cpu->id_process=e->process_pid;
-          cpu->quantum=processo->quantum;
-          int new_quantum=(int)0.5*(processo->quantum)+(int)0.5*(e->duration);
-          *(&processo->quantum)= new_quantum;// aggiorno il quanto per la volta successiva
-          printf("Quanto vecchio: %d\n, Durata Evento: %d\n, Nuovo quanto: %d\n ", processo->quantum, e->duration, new_quantum);
-          List_pushBack(&os->ready, (ListItem*)processo);
+          if(e->type==IO){
+            List_pushBack(&os->waiting, (ListItem*) processo);
           }
           else{
-            List_pushBack(&os->waiting, (ListItem*) processo);
+            cpu->running=processo; 
+            cpu->id_process=e->process_pid;
+            printf("Quanto del processo %d: %d\n",processo->pid,  processo->quantum);
+            cpu->quantum=processo->quantum;
+            printf("Durata dell'evento successivo: %d\n", e->duration);
+            int new_quantum=0.5*(processo->quantum)+0.5*(e->duration);
+            
+            //eliminiamo il processo da quelli in ready e lo mettiamo in running al pcb 
+            List_popFront(&os->ready);
+            if (e->duration>processo->quantum) {
+              printf("Evento spezzato!, quanto: %d , durata effettiva: %d\n", processo->quantum, e->duration);
+              ProcessEvent* qe=(ProcessEvent*)malloc(sizeof(ProcessEvent));
+              qe->list.prev=qe->list.next=0;
+              qe->type=CPU;
+              qe->duration=processo->quantum;
+              e->duration-=processo->quantum;
+              List_pushFront(&processo->events, (ListItem*)qe);
+  
+  }
+  processo->quantum= new_quantum;// aggiorno il quanto per la volta successiva
+  printf("Nuovo quanto: %d\n \n", new_quantum);
+
           }
 
       }
@@ -126,10 +140,22 @@ int main(int argc, char** argv) {
     }
   }
   printf("num processes in queue %d\n", os.processes.size);
-  while(os.running
+  int running=0;
+  for(int i=0;i<ncpu;i++){
+    if (os.cpu[i].running!=NULL){
+      running=1;
+    }
+  }
+  while(running
         || os.ready.first
         || os.waiting.first
         || os.processes.first){
-    FakeOS_simStep(&os);
+  FakeOS_simStep(&os);
+  }
+  if(!running){
+    printf("\n************** SIMULAZIONE TERMINATA **************\n");
+    for(int i=0;i<ncpu;i++){
+      printf("\t CPU %d running pid: -1\n", i+1);
+    }
   }
 }

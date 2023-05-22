@@ -139,20 +139,20 @@ void FakeOS_simStep(FakeOS* os){
   // and reschedule process
   // if last event, destroy running
 
-  //RUNNING CAMBIA  
-  //originale
-  /*
-    FakePCB* running=os->running;
-  printf("\trunning pid: %d\n", running?running->pid:-1);
-  if (running) {
-    ProcessEvent* e=(ProcessEvent*) running->events.first;
-    assert(e->type==CPU);
-    e->duration--;
-    printf("\t\tremaining time:%d\n",e->duration);
-    if (e->duration==0){
-      printf("\t\tend burst\n");
-      List_popFront(&running->events);
-      free(e);
+  //RUNNING MODIFICATO
+  for(int i=0;i<os->ncpu;i++){
+    if(os->cpu[i].running!=NULL){
+      FakePCB* running=os->cpu[i].running;
+      printf("\t CPU %d running pid: %d\n",os->cpu[i].id, running?running->pid:-1);
+      if (running) {
+      ProcessEvent* e=(ProcessEvent*) running->events.first;
+      assert(e->type==CPU);
+      e->duration--;
+      printf("\t\tremaining time:%d\n",e->duration);
+        if (e->duration==0){
+        printf("\t\tend burst\n");
+        List_popFront(&running->events);
+        free(e);
       if (! running->events.first) {
         printf("\t\tend process\n");
         free(running); // kill process
@@ -169,25 +169,7 @@ void FakeOS_simStep(FakeOS* os){
           break;
         }
       }
-      os->running = 0;
-    }
-  }
-  */
-
-  //MODIFICATO
-  //FakePCB* running=os->running;
-  for(int i=0;i<os->ncpu;i++){
-    if(os->cpu[i].running!=NULL){
-    ProcessEvent* running= (ProcessEvent*) os->cpu[i].running;
-    printf("\t CPU %d running pid: %d\n", os->cpu[i].id,os->cpu[i].id_process);
-    if (running==NULL) {
-    assert(running->type==CPU);
-    running->duration--;
-    printf("\t\tremaining time:%d\n",running->duration);
-    if (running->duration==0){
-      printf("\t\tend burst\n");
-      os->cpu[i].running=NULL;
-      free(running);
+      os->cpu[i].running = 0;
     }
   }
     }

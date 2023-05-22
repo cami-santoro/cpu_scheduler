@@ -17,7 +17,7 @@ typedef void (*ScheduleFn)(struct FakeOS* os, struct FakeCPU* cpu);
 typedef struct FakeCPU{ //RAPPRESENTA UNA CPU
   int id;
   int id_process;
-  ProcessEvent* running;
+  FakePCB* running;
   ScheduleFn schedule_fn;
   int quantum;
 } FakeCPU;
